@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS MCS — F-16 VIPER</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:  #00ff88;
+  --blue:   #00cfff;
+  --red:    #ff3355;
+  --orange: #ff8c00;
+  --yellow: #ffe600;
+  --purple: #aa44ff;
+  --bg:     #03050a;
+  --panel:  #070b14;
+  --border: #0d1f35;
+  --text:   #8ab4cc;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;height:100vh;overflow:hidden;cursor:crosshair;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,20,40,0.06) 3px,rgba(0,20,40,0.06) 4px);pointer-events:none;z-index:9999;}
+
+#app{display:grid;grid-template-columns:260px 1fr 260px;grid-template-rows:48px 1fr 170px;height:100vh;gap:2px;background:#000;padding:2px;}
+
+/* HEADER */
+#header{grid-column:1/-1;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;}
+.logo{font-family:'Orbitron',monospace;font-size:1.1em;font-weight:900;color:var(--blue);letter-spacing:6px;text-shadow:0 0 20px rgba(0,207,255,0.6);}
+.logo span{color:var(--green);}
+.header-center{display:flex;gap:16px;align-items:center;}
+.status-pill{padding:3px 12px;border-radius:2px;font-size:0.65em;letter-spacing:2px;font-weight:700;}
+.pill-green{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.3);}
+.pill-blue{background:rgba(0,207,255,0.1);color:var(--blue);border:1px solid rgba(0,207,255,0.3);}
+.pill-red{background:rgba(255,51,85,0.1);color:var(--red);border:1px solid rgba(255,51,85,0.3);}
+.pill-orange{background:rgba(255,140,0,0.1);color:var(--orange);border:1px solid rgba(255,140,0,0.3);}
+#clock{font-family:'Orbitron',monospace;font-size:0.85em;color:var(--blue);letter-spacing:2px;}
+
+/* PANELS */
+.panel{background:var(--panel);border:1px solid var(--border);overflow:hidden;position:relative;}
+.panel-title{font-size:0.6em;letter-spacing:3px;color:#1a4060;padding:8px 12px 4px;border-bottom:1px solid var(--border);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+.panel-title span{color:var(--blue);}
+
+/* LEFT */
+#left{grid-row:2;}
+.section{padding:10px 12px;border-bottom:1px solid var(--border);}
+.sec-title{font-size:0.6em;color:#1a4060;letter-spacing:2px;margin-bottom:8px;}
+
+.pilot-avatar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.avatar-circle{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#0a2040,#0d3060);border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:1.4em;box-shadow:0 0 15px rgba(0,207,255,0.3);}
+.pilot-name{font-family:'Orbitron',monospace;font-size:0.75em;color:#d0eeff;}
+.pilot-call{font-size:0.65em;color:var(--blue);}
+
+.vitals{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.vital-box{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;padding:6px 8px;}
+.vital-label{font-size:0.55em;color:#1a4060;letter-spacing:1px;}
+.vital-val{font-family:'Orbitron',monospace;font-size:0.9em;margin-top:2px;}
+
+.bar-wrap{margin-top:7px;}
+.bar-label{display:flex;justify-content:space-between;font-size:0.6em;color:#1a4060;margin-bottom:3px;}
+.bar-track{height:5px;background:#050f1a;border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;transition:width 1.5s ease;}
+
+.sys-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.72em;border-bottom:1px solid #070f1a;}
+.sys-row:last-child{border-bottom:none;}
+.sys-dot{width:6px;height:6px;border-radius:50%;margin-right:6px;display:inline-block;}
+
+.weapon-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:0.7em;border-bottom:1px solid #060d18;}
+.weapon-count{font-family:'Orbitron',monospace;color:var(--yellow);}
+
+/* CENTER */
+#center{grid-row:2;position:relative;}
+#radarCanvas{display:block;width:100%;height:100%;}
+.hud-overlay{position:absolute;inset:0;pointer-events:none;padding:12px;}
+.hud-corner{position:absolute;font-size:0.6em;color:rgba(0,207,255,0.4);letter-spacing:1px;}
+.hud-tl{top:12px;left:12px;}
+.hud-tr{top:12px;right:12px;text-align:right;}
+.hud-bl{bottom:12px;left:12px;}
+.hud-br{bottom:12px;right:12px;text-align:right;}
+.hud-val{font-family:'Orbitron',monospace;color:var(--blue);font-size:1.1em;}
+
+/* SENSOR SOURCE BADGE */
+.source-badge{position:absolute;top:8px;left:50%;transform:translateX(-50%);padding:3px 14px;border-radius:3px;font-size:0.6em;letter-spacing:2px;font-weight:700;}
+.source-real{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid rgba(0,255,136,0.3);}
+.source-sim{background:rgba(255,140,0,0.15);color:var(--orange);border:1px solid rgba(255,140,0,0.3);}
+
+#threatAlert{position:absolute;top:50%;left:50%;transform:translate(-50%,-60px);background:rgba(255,51,85,0.15);border:1px solid var(--red);border-radius:6px;padding:10px 20px;text-align:center;display:none;animation:flashAlert 0.5s infinite;}
+@keyframes flashAlert{0%,100%{opacity:1}50%{opacity:0.4}}
+.threat-title{font-family:'Orbitron',monospace;color:var(--red);font-size:0.85em;letter-spacing:3px;}
+.threat-detail{font-size:0.7em;color:#ff8899;margin-top:4px;}
+
+/* RIGHT */
+#right{grid-row:2;}
+.ai-message{background:rgba(170,68,255,0.05);border:1px solid rgba(170,68,255,0.15);border-radius:4px;padding:8px 10px;font-size:0.72em;color:#b090d0;line-height:1.6;min-height:70px;}
+.ai-brain{font-size:1.2em;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.8)}}
+.threat-score-val{font-family:'Orbitron',monospace;font-size:1.4em;}
+
+.check-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #0e0e12;font-size:0.78em;}
+.check-item:last-child{border-bottom:none;}
+.badge{padding:2px 10px;border-radius:3px;font-size:0.7em;font-weight:700;min-width:48px;text-align:center;}
+.badge.ok{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.2);}
+.badge.warn{background:rgba(255,140,0,0.1);color:var(--orange);border:1px solid rgba(255,140,0,0.2);}
+.badge.fail{background:rgba(255,51,85,0.1);color:var(--red);border:1px solid rgba(255,51,85,0.2);}
+
+.btn-row{display:flex;gap:10px;margin-top:10px;}
+button{flex:1;padding:12px;border:none;border-radius:6px;font-family:'Orbitron',monospace;font-size:0.75em;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
+.btn-arm{background:rgba(0,255,136,0.08);color:var(--green);border:1px solid rgba(0,255,136,0.3);}
+.btn-arm:hover{background:rgba(0,255,136,0.2);box-shadow:0 0 25px rgba(0,255,136,0.3);}
+.btn-abort{background:rgba(255,51,85,0.08);color:var(--red);border:1px solid rgba(255,51,85,0.3);}
+.btn-abort:hover{background:rgba(255,51,85,0.2);box-shadow:0 0 25px rgba(255,51,85,0.3);}
+
+/* BOTTOM */
+#bottom{grid-column:1/-1;background:var(--panel);border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:1px;background:#000;}
+.bottom-cell{background:var(--panel);padding:8px 14px;}
+.bottom-title{font-size:0.55em;color:#1a4060;letter-spacing:2px;margin-bottom:6px;}
+
+.flt-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:0.65em;}
+.flt-label{width:65px;color:#2a5070;}
+.flt-track{flex:1;height:4px;background:#050f1a;border-radius:2px;overflow:hidden;}
+.flt-fill{height:100%;border-radius:2px;transition:width 1.5s ease;}
+.flt-val{width:55px;text-align:right;font-family:'Orbitron',monospace;font-size:0.9em;}
+
+.comm-log{height:110px;overflow-y:auto;font-size:0.65em;}
+.comm-entry{padding:2px 0;border-bottom:1px solid #060d18;display:flex;gap:8px;}
+.comm-time{color:#1a4060;min-width:50px;}
+.comm-from{color:var(--blue);min-width:70px;}
+.comm-msg{color:#6090b0;}
+
+.timeline{display:flex;flex-direction:column;gap:4px;height:110px;overflow-y:auto;}
+.tl-item{display:flex;align-items:center;gap:8px;font-size:0.65em;}
+.tl-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tl-time{color:#1a4060;min-width:45px;}
+.tl-desc{color:#6090b0;}
+.tl-item.active .tl-desc{color:var(--green);}
+
+/* SENSOR FEED PANEL */
+.sensor-feed{height:110px;overflow-y:auto;font-size:0.65em;}
+.sf-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #060d18;}
+.sf-key{color:#1a4060;}
+.sf-val{font-family:'Orbitron',monospace;color:var(--green);}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:#050f1a;}
+::-webkit-scrollbar-thumb{background:#0d2040;}
+@keyframes abortFlash{0%,100%{background:var(--bg)}50%{background:rgba(255,0,0,0.07)}}
+body.critical{animation:abortFlash 0.3s infinite;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div><div class="logo">AEGIS <span>MCS</span></div></div>
+    <div class="header-center">
+      <div class="status-pill pill-green">MISSION ACTIVE</div>
+      <div class="status-pill pill-blue">F-16C VIPER BLK.52</div>
+      <div class="status-pill pill-orange" id="threatPill">THREAT: MODERATE</div>
+      <div class="status-pill pill-green" id="pilotStatus">PILOT: FIT</div>
+      <div class="status-pill" id="sourcePill" style="background:rgba(255,140,0,0.1);color:#ff8c00;border:1px solid rgba(255,140,0,0.3)">⚡ SIMULATED DATA</div>
+    </div>
+    <div id="clock">--:--:-- UTC</div>
+  </div>
+
+  <!-- LEFT -->
+  <div class="panel" id="left">
+    <div class="panel-title">PILOT BIOMETRICS <span id="bioStatus">●LIVE</span></div>
+    <div class="section">
+      <div class="pilot-avatar">
+        <div class="avatar-circle">✈</div>
+        <div>
+          <div class="pilot-name">MAJ. HASSAN K.</div>
+          <div class="pilot-call">CALLSIGN: "VIPER-1"</div>
+        </div>
+      </div>
+      <div class="vitals">
+        <div class="vital-box"><div class="vital-label">HEART RATE</div><div class="vital-val" id="heartRate" style="color:var(--green)">82 BPM</div></div>
+        <div class="vital-box"><div class="vital-label">G-FORCE</div><div class="vital-val" id="gForce" style="color:var(--orange)">1.0G</div></div>
+        <div class="vital-box"><div class="vital-label">HUMIDITY</div><div class="vital-val" id="humidity" style="color:var(--blue)">58%</div></div>
+        <div class="vital-box"><div class="vital-label">TEMPERATURE</div><div class="vital-val" id="tempVal" style="color:var(--yellow)">24°C</div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>COGNITIVE FATIGUE</span><span id="fatigueVal">23%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="fatigueFill" style="width:23%;background:var(--green)"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>BATTERY</span><span id="battVal">94%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="battFill" style="width:94%;background:var(--green)"></div></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">AIRCRAFT SYSTEMS</div>
+      <div class="sys-row"><span><span class="sys-dot" style="background:var(--green)"></span>ENGINE GE-F110</span><span style="color:var(--green);font-size:0.85em">98%</span></div>
+      <div class="sys-row"><span><span class="sys-dot" style="background:var(--green)"></span>RADAR APG-68</span><span style="color:var(--green);font-size:0.85em">ACTIVE</span></div>
+      <div class="sys-row"><span><span class="sys-dot" style="background:var(--green)"></span>FLCS</span><span style="color:var(--green);font-size:0.85em">NOMINAL</span></div>
+      <div class="sys-row"><span><span class="sys-dot" style="background:var(--yellow)"></span>FUEL</span><span style="color:var(--yellow);font-size:0.85em" id="fuelSys">6,200 LB</span></div>
+    </div>
+    <div class="section">
+      <div class="sec-title">WEAPON LOADOUT</div>
+      <div class="weapon-item"><span>AIM-120C AMRAAM</span><span class="weapon-count">×4</span></div>
+      <div class="weapon-item"><span>AIM-9X SIDEWINDER</span><span class="weapon-count">×2</span></div>
+      <div class="weapon-item"><span>M61A1 VULCAN</span><span class="weapon-count">480 RDS</span></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="panel" id="center">
+    <canvas id="radarCanvas"></canvas>
+    <div class="hud-overlay">
+      <div class="hud-corner hud-tl">
+        <div>ALT <span class="hud-val" id="altitude">28,400 FT</span></div>
+        <div style="margin-top:4px">HDG <span class="hud-val" id="heading">247°</span></div>
+      </div>
+      <div class="hud-corner hud-tr">
+        <div>PRESSURE <span class="hud-val" id="pressure">1013 hPa</span></div>
+        <div style="margin-top:4px">G-FORCE <span class="hud-val" id="gHUD">1.0G</span></div>
+      </div>
+      <div class="hud-corner hud-bl">
+        <div>TEMP <span class="hud-val" id="tempHUD">24°C</span></div>
+        <div style="margin-top:4px">HUMIDITY <span class="hud-val" id="humHUD">58%</span></div>
+      </div>
+      <div class="hud-corner hud-br">
+        <div>FLIGHT TIME <span class="hud-val" id="flightTime">0:00</span></div>
+        <div style="margin-top:4px">MAX G <span class="hud-val" id="maxG">1.0G</span></div>
+      </div>
+      <div id="sourceBadge" class="source-badge source-sim">⚡ SIMULATED SENSOR DATA</div>
+      <div id="threatAlert">
+        <div class="threat-title">⚠ MISSILE LAUNCH DETECTED</div>
+        <div class="threat-detail" id="threatDetail">SA-11 GADFLY — BRG 042 — 18NM</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel" id="right">
+    <div class="panel-title">AI CO-PILOT <span style="color:#aa44ff">●NEXUS</span></div>
+    <div class="section">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span class="ai-brain">🧠</span>
+        <span style="font-family:'Orbitron',monospace;font-size:0.75em;color:#aa44ff;letter-spacing:2px;">NEXUS-7 AI</span>
+      </div>
+      <div class="ai-message" id="aiMessage">Initializing NEXUS-7... Reading sensor feed...</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:6px 10px;background:rgba(0,0,0,0.3);border-radius:4px;font-size:0.65em;">
+        <span>THREAT SCORE</span>
+        <span class="threat-score-val" id="threatScore" style="color:var(--orange)">47</span>
+        <span style="color:#1a4060">/100</span>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">SAFETY CHECKLIST</div>
+      <div class="check-item"><span>G-Force safe (&lt;7G)</span><span class="badge ok" id="chkG">OK</span></div>
+      <div class="check-item"><span>Temperature normal</span><span class="badge ok" id="chkTemp">OK</span></div>
+      <div class="check-item"><span>Pressure nominal</span><span class="badge ok" id="chkPres">OK</span></div>
+      <div class="check-item"><span>Battery &gt; 20%</span><span class="badge ok" id="chkBatt">OK</span></div>
+      <div class="check-item"><span>Pilot fatigue &lt;75%</span><span class="badge ok" id="chkFatigue">OK</span></div>
+    </div>
+    <div style="padding:10px 12px;">
+      <div class="btn-row">
+        <button class="btn-arm">🟢 MISSION GO</button>
+        <button class="btn-abort" onclick="triggerAbort()">🔴 ABORT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div id="bottom">
+    <div class="bottom-cell">
+      <div class="bottom-title">LIVE SENSOR FEED — ARDUINO</div>
+      <div class="sensor-feed" id="sensorFeed"></div>
+    </div>
+    <div class="bottom-cell">
+      <div class="bottom-title">FLIGHT TELEMETRY</div>
+      <div class="flt-row"><span class="flt-label">G-FORCE</span><div class="flt-track"><div class="flt-fill" id="fG" style="width:11%;background:var(--green)"></div></div><span class="flt-val" id="fGVal" style="color:var(--green)">1.0G</span></div>
+      <div class="flt-row"><span class="flt-label">BATTERY</span><div class="flt-track"><div class="flt-fill" id="fBatt" style="width:94%;background:var(--green)"></div></div><span class="flt-val" id="fBattVal" style="color:var(--green)">94%</span></div>
+      <div class="flt-row"><span class="flt-label">TEMP</span><div class="flt-track"><div class="flt-fill" id="fTemp" style="width:48%;background:var(--blue)"></div></div><span class="flt-val" id="fTempVal" style="color:var(--blue)">24°C</span></div>
+      <div class="flt-row"><span class="flt-label">PRESSURE</span><div class="flt-track"><div class="flt-fill" id="fPres" style="width:50%;background:var(--yellow)"></div></div><span class="flt-val" id="fPresVal" style="color:var(--yellow)">1013</span></div>
+      <div class="flt-row"><span class="flt-label">HUMIDITY</span><div class="flt-track"><div class="flt-fill" id="fHum" style="width:58%;background:var(--purple)"></div></div><span class="flt-val" id="fHumVal" style="color:#aa44ff">58%</span></div>
+    </div>
+    <div class="bottom-cell">
+      <div class="bottom-title">COMM LOG</div>
+      <div class="comm-log" id="commLog"></div>
+    </div>
+    <div class="bottom-cell">
+      <div class="bottom-title">NEXUS-7 FATIGUE SYSTEM</div>
+      <div style="font-size:0.65em;color:#2a5070;margin-bottom:6px">GROUNDING THRESHOLD: 75%</div>
+      <div class="bar-wrap">
+        <div class="bar-label"><span>REACTION DEGRADATION</span><span id="reactVal">12%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="reactFill" style="width:12%;background:var(--green)"></div></div>
+      </div>
+      <div class="bar-wrap" style="margin-top:6px">
+        <div class="bar-label"><span>DECISION ACCURACY</span><span id="decisionVal">94%</span></div>
+        <div class="bar-track"><div class="bar-fill" id="decisionFill" style="width:94%;background:var(--green)"></div></div>
+      </div>
+      <div class="status-pill pill-green" id="groundingStatus" style="margin-top:8px;font-size:0.6em;display:inline-block">✅ PILOT CLEARED</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SENSOR DATA ──
+// This object holds ALL sensor values
+// When connected to real Arduino via Python server,
+// replace updateWithSimData() with fetchFromArduino()
+let sensorData = {
+  temp: 24.0,
+  humidity: 58.0,
+  pressure: 1013.25,
+  altitude: 28400,
+  gForce: 1.0,
+  gX: 0.0, gY: 0.0, gZ: 1.0,
+  gyroX: 0.0, gyroY: 0.0, gyroZ: 0.0,
+  battery: 94.0,
+  maxG: 1.0,
+  flightMins: 0,
+  flightSecs: 0
+};
+
+let missionMins = 134;
+let isRealData = false;
+
+// ── CLOCK ──
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toUTCString().slice(17,25) + ' UTC';
+}, 1000);
+
+// ── RADAR ──
+const canvas = document.getElementById('radarCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, cx, cy, sweepAngle = 0;
+const contacts = [
+  {id:'V1', x:0,   y:0,   type:'friendly', vx:0.3,  vy:-0.2},
+  {id:'B1', x:120, y:-80, type:'hostile',  vx:-0.4, vy:0.3},
+  {id:'B2', x:80,  y:100, type:'hostile',  vx:-0.2, vy:-0.4},
+  {id:'V2', x:-90, y:30,  type:'friendly', vx:0.3,  vy:-0.15},
+  {id:'SA', x:160, y:60,  type:'sam',      vx:0,    vy:0},
+];
+const trails = {};
+
+function resizeCanvas() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  W = canvas.width = r.width; H = canvas.height = r.height; cx = W/2; cy = H/2;
+}
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+
+function drawRadar() {
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#020810'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,30,60,0.5)'; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  [80,160,240].forEach(r=>{ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(0,80,140,0.2)';ctx.stroke();});
+  for(let i=0;i<80;i++){const a=sweepAngle-(i*Math.PI/180);ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,Math.min(W,H)*0.8,a,a+Math.PI/90);ctx.fillStyle=`rgba(0,255,136,${(80-i)/80*0.3})`;ctx.fill();}
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(sweepAngle)*Math.min(W,H)*0.8,cy+Math.sin(sweepAngle)*Math.min(W,H)*0.8);ctx.strokeStyle='rgba(0,255,136,0.8)';ctx.lineWidth=1.5;ctx.stroke();
+  contacts.forEach(c=>{
+    c.x+=c.vx*0.4; c.y+=c.vy*0.4;
+    const px=cx+c.x, py=cy+c.y;
+    if(!trails[c.id])trails[c.id]=[];
+    if(Math.round(sweepAngle*10)%5===0)trails[c.id].push({x:px,y:py});
+    if(trails[c.id].length>6)trails[c.id].shift();
+    const color=c.type==='hostile'?'255,51,85':c.type==='sam'?'255,140,0':'0,255,136';
+    trails[c.id].forEach((pt,i)=>{ctx.beginPath();ctx.arc(pt.x,pt.y,1.5,0,Math.PI*2);ctx.fillStyle=`rgba(${color},${i/trails[c.id].length*0.4})`;ctx.fill();});
+    if(c.type==='hostile'){ctx.beginPath();ctx.moveTo(px,py-5);ctx.lineTo(px+5,py+5);ctx.lineTo(px-5,py+5);ctx.closePath();ctx.fillStyle=`rgb(${color})`;ctx.fill();}
+    else if(c.type==='sam'){ctx.fillStyle=`rgb(${color})`;ctx.fillRect(px-3,py-3,6,6);}
+    else{ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fillStyle=`rgb(${color})`;ctx.fill();}
+    ctx.fillStyle=`rgb(${color})`;ctx.font='10px Share Tech Mono';ctx.fillText(c.id,px+7,py-3);
+  });
+  sweepAngle+=0.025; requestAnimationFrame(drawRadar);
+}
+drawRadar();
+
+// ── SIMULATE SENSOR DATA (Arduino-like output) ──
+function updateWithSimData() {
+  sensorData.temp     = +(23 + Math.random()*3).toFixed(1);
+  sensorData.humidity = +(55 + Math.random()*10).toFixed(1);
+  sensorData.pressure = +(1010 + Math.random()*6).toFixed(2);
+  sensorData.gForce   = +(0.8 + Math.random()*0.4).toFixed(2);
+  sensorData.battery  = Math.max(0, +(sensorData.battery - 0.05).toFixed(1));
+  sensorData.maxG     = Math.max(sensorData.maxG, sensorData.gForce);
+  sensorData.flightMins = Math.floor((Date.now() - startTime) / 60000);
+  sensorData.flightSecs = Math.floor(((Date.now() - startTime) % 60000) / 1000);
+  updateDashboard();
+}
+
+// ── FETCH FROM REAL ARDUINO (via Python server) ──
+// Uncomment this when you have real Arduino connected!
+// async function fetchFromArduino() {
+//   try {
+//     const res = await fetch('http://localhost:5000/sensors');
+//     sensorData = await res.json();
+//     isRealData = true;
+//     updateDashboard();
+//   } catch(e) {
+//     console.log('Arduino not connected, using sim data');
+//     updateWithSimData();
+//   }
+// }
+
+// ── UPDATE ALL DASHBOARD ELEMENTS ──
+function updateDashboard() {
+  const d = sensorData;
+
+  // HUD
+  document.getElementById('pressure').textContent  = d.pressure + ' hPa';
+  document.getElementById('gHUD').textContent      = d.gForce + 'G';
+  document.getElementById('tempHUD').textContent   = d.temp + '°C';
+  document.getElementById('humHUD').textContent    = d.humidity + '%';
+  document.getElementById('flightTime').textContent = d.flightMins + ':' + String(d.flightSecs).padStart(2,'0');
+  document.getElementById('maxG').textContent      = d.maxG.toFixed(2) + 'G';
+
+  // Left panel
+  document.getElementById('gForce').textContent   = d.gForce + 'G';
+  document.getElementById('gForce').style.color   = d.gForce>7?'var(--red)':d.gForce>5?'var(--orange)':'var(--yellow)';
+  document.getElementById('humidity').textContent = d.humidity + '%';
+  document.getElementById('tempVal').textContent  = d.temp + '°C';
+  document.getElementById('battVal').textContent  = d.battery + '%';
+  document.getElementById('battFill').style.width = d.battery + '%';
+  document.getElementById('battFill').style.background = d.battery<20?'var(--red)':d.battery<40?'var(--orange)':'var(--green)';
+
+  // Fatigue (based on flight time)
+  const fatigue = Math.min(85, Math.floor(missionMins/300*100));
+  missionMins += 0.05;
+  document.getElementById('fatigueVal').textContent = fatigue + '%';
+  document.getElementById('fatigueFill').style.width = fatigue + '%';
+  document.getElementById('fatigueFill').style.background = fatigue>75?'var(--red)':fatigue>50?'var(--orange)':'var(--green)';
+
+  // Bottom bars
+  document.getElementById('fGVal').textContent    = d.gForce + 'G';
+  document.getElementById('fBattVal').textContent = d.battery + '%';
+  document.getElementById('fTempVal').textContent = d.temp + '°C';
+  document.getElementById('fPresVal').textContent = d.pressure;
+  document.getElementById('fHumVal').textContent  = d.humidity + '%';
+  document.getElementById('fG').style.width    = (d.gForce/9*100)+'%';
+  document.getElementById('fBatt').style.width = d.battery+'%';
+  document.getElementById('fTemp').style.width = (d.temp/60*100)+'%';
+  document.getElementById('fPres').style.width = ((d.pressure-950)/100*100)+'%';
+  document.getElementById('fHum').style.width  = d.humidity+'%';
+
+  // Checklist
+  setBadge('chkG',      d.gForce < 7,   d.gForce+'G');
+  setBadge('chkTemp',   d.temp < 40,    d.temp+'°C');
+  setBadge('chkPres',   d.pressure > 1000, d.pressure+'hPa');
+  setBadge('chkBatt',   d.battery > 20, d.battery+'%');
+  setBadge('chkFatigue', fatigue < 75,  fatigue+'%');
+
+  // Grounding
+  const gs = document.getElementById('groundingStatus');
+  if (fatigue > 75) {
+    gs.textContent = '🚨 PILOT GROUNDING RECOMMENDED';
+    gs.className = 'status-pill pill-red';
+    document.body.classList.add('critical');
+    document.getElementById('pilotStatus').textContent = 'PILOT: FATIGUED';
+    document.getElementById('pilotStatus').className = 'status-pill pill-red';
+  } else {
+    gs.textContent = '✅ PILOT CLEARED';
+    gs.className = 'status-pill pill-green';
+    document.body.classList.remove('critical');
+    document.getElementById('pilotStatus').textContent = 'PILOT: FIT';
+    document.getElementById('pilotStatus').className = 'status-pill pill-green';
+  }
+
+  // Reaction
+  const react = Math.floor(fatigue*0.3);
+  document.getElementById('reactVal').textContent = react+'%';
+  document.getElementById('reactFill').style.width = react+'%';
+  document.getElementById('reactFill').style.background = react>40?'var(--red)':react>20?'var(--orange)':'var(--green)';
+  const dec = Math.max(60, 100-fatigue);
+  document.getElementById('decisionVal').textContent = dec+'%';
+  document.getElementById('decisionFill').style.width = dec+'%';
+
+  // Source badge
+  const sb = document.getElementById('sourceBadge');
+  const sp = document.getElementById('sourcePill');
+  if (isRealData) {
+    sb.textContent = '🟢 REAL ARDUINO DATA'; sb.className = 'source-badge source-real';
+    sp.textContent = '🟢 REAL SENSOR DATA'; sp.className = 'status-pill pill-green';
+  }
+
+  // Sensor feed log
+  const feed = document.getElementById('sensorFeed');
+  const t = new Date().toLocaleTimeString();
+  feed.innerHTML += `<div class="sf-row"><span class="sf-key">[${t}]</span><span class="sf-val">T:${d.temp}°C G:${d.gForce}G B:${d.battery}% P:${d.pressure}hPa</span></div>`;
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function setBadge(id, ok, val) {
+  const el = document.getElementById(id);
+  el.textContent = ok ? val : '⚠ '+val;
+  el.className = 'badge ' + (ok ? 'ok' : 'fail');
+}
+
+// ── AI MESSAGES ──
+const aiPool = [
+  d => `Temp ${d.temp}°C — nominal. G-force ${d.gForce}G — safe. Battery ${d.battery}% — all systems GO.`,
+  d => `Pressure ${d.pressure}hPa — ${d.pressure<1000?'LOW — weather alert!':'stable'}. Humidity ${d.humidity}%. Conditions ${d.pressure<1000?'MARGINAL':'favorable'}.`,
+  d => `G-force ${d.gForce}G — ${d.gForce>5?'WARNING: approaching limits!':d.gForce>3?'elevated, monitor closely':'within safe envelope'}. Max recorded: ${d.maxG.toFixed(2)}G.`,
+  d => `Battery at ${d.battery}% — ${d.battery<20?'CRITICAL: return to base immediately!':d.battery<40?'low, plan recovery soon':'sufficient for mission continuation'}.`,
+  d => `Flight time ${d.flightMins}min. Fatigue index rising. ${d.flightMins>180?'Recommend pilot rotation.':'Mission continuation authorized.'}`,
+];
+let aiIdx = 0;
+function rotateAI() {
+  document.getElementById('aiMessage').textContent = aiPool[aiIdx%aiPool.length](sensorData);
+  aiIdx++;
+}
+setInterval(rotateAI, 4000);
+
+// ── THREAT ──
+let threatVisible = false;
+function toggleThreat() {
+  threatVisible = Math.random() > 0.75;
+  document.getElementById('threatAlert').style.display = threatVisible ? 'block' : 'none';
+  if (threatVisible) {
+    const threats = ['SA-11 GADFLY — BRG 042 — 18NM','MiG-29 LOCK-ON — BRG 118 — 24NM','MANPAD LAUNCH — GRID 4427'];
+    document.getElementById('threatDetail').textContent = threats[Math.floor(Math.random()*threats.length)];
+    const score = Math.floor(60+Math.random()*35);
+    document.getElementById('threatScore').textContent = score;
+    document.getElementById('threatScore').style.color = score>70?'var(--red)':'var(--orange)';
+  }
+}
+setInterval(toggleThreat, 8000);
+
+// ── COMM LOG ──
+const comms = [
+  ['AWACS','Viper-1, 2 bandits BRG 042, 24NM.'],
+  ['NEXUS-7','Sensor data nominal. Mission continue.'],
+  ['GND-CTRL','Battery state nominal. Good to go.'],
+  ['VIPER-1','Copy. Engaging BANDIT-1.'],
+  ['NEXUS-7','G-force within limits. Pilot fit.'],
+  ['AWACS','Splash one MiG-29. Good kill Viper.'],
+];
+let commIdx = 0;
+function addComm() {
+  const log = document.getElementById('commLog');
+  const c = comms[commIdx%comms.length];
+  const t = new Date().toUTCString().slice(17,25);
+  log.innerHTML += `<div class="comm-entry"><span class="comm-time">${t}</span><span class="comm-from">${c[0]}</span><span class="comm-msg">${c[1]}</span></div>`;
+  log.scrollTop = log.scrollHeight;
+  commIdx++;
+}
+setInterval(addComm, 4000); addComm();
+
+// ── ABORT ──
+function triggerAbort() {
+  document.body.classList.add('critical');
+  document.getElementById('aiMessage').textContent = '🚨 ABORT TRIGGERED — All systems emergency shutdown. RTB immediately!';
+  setTimeout(() => document.body.classList.remove('critical'), 5000);
+}
+
+// ── INIT ──
+const startTime = Date.now();
+setInterval(updateWithSimData, 2000);
+// To use real Arduino data, replace above with:
+// setInterval(fetchFromArduino, 2000);
+updateWithSimData();
+rotateAI();
+</script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEGIS RADAR — F-16 VIPER</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:  #00ff88;
+  --blue:   #00cfff;
+  --red:    #ff3355;
+  --orange: #ff8c00;
+  --yellow: #ffe600;
+  --purple: #aa44ff;
+  --bg:     #03050a;
+  --panel:  #070b14;
+  --border: #0d1f35;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: #8ab4cc;
+  font-family: 'Share Tech Mono', monospace;
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  grid-template-rows: 48px 1fr;
+  gap: 2px;
+  background: #000;
+  padding: 2px;
+}
+
+/* HEADER */
+#header {
+  grid-column: 1/-1;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+}
+.logo { font-family:'Orbitron',monospace; font-size:1.1em; font-weight:900; color:var(--blue); letter-spacing:6px; text-shadow:0 0 20px rgba(0,207,255,0.6); }
+.logo span { color:var(--green); }
+.pill { padding:3px 12px; border-radius:2px; font-size:0.65em; letter-spacing:2px; font-weight:700; }
+.pill-green { background:rgba(0,255,136,0.1); color:var(--green); border:1px solid rgba(0,255,136,0.3); }
+.pill-blue  { background:rgba(0,207,255,0.1); color:var(--blue);  border:1px solid rgba(0,207,255,0.3); }
+.pill-red   { background:rgba(255,51,85,0.1);  color:var(--red);   border:1px solid rgba(255,51,85,0.3); }
+.pill-orange{ background:rgba(255,140,0,0.1);  color:var(--orange);border:1px solid rgba(255,140,0,0.3); }
+#clock { font-family:'Orbitron',monospace; font-size:0.85em; color:var(--blue); }
+
+/* RADAR */
+#radarPanel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+#radarCanvas { display:block; width:100%; height:100%; }
+
+/* ZOOM CONTROLS */
+#zoomControls {
+  position: absolute;
+  top: 12px; left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.zoom-btn {
+  width: 32px; height: 32px;
+  background: rgba(0,207,255,0.1);
+  border: 1px solid rgba(0,207,255,0.3);
+  border-radius: 4px;
+  color: var(--blue);
+  font-size: 1.1em;
+  cursor: pointer;
+  display: flex; align-items:center; justify-content:center;
+  font-family: 'Orbitron', monospace;
+  transition: all 0.2s;
+}
+.zoom-btn:hover { background:rgba(0,207,255,0.25); }
+#zoomLevel {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--blue);
+  font-size: 0.65em;
+  padding: 4px 6px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+/* HUD corners */
+.hud-corner { position:absolute; font-size:0.6em; color:rgba(0,207,255,0.5); }
+.hud-tl { top:12px; left:56px; }
+.hud-tr { top:12px; right:12px; text-align:right; }
+.hud-bl { bottom:12px; left:12px; }
+.hud-br { bottom:12px; right:12px; text-align:right; }
+.hud-val { font-family:'Orbitron',monospace; color:var(--blue); font-size:1.1em; }
+
+/* Threat flash */
+#threatFlash {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-70px);
+  background:rgba(255,51,85,0.15);
+  border:1px solid var(--red);
+  border-radius:6px; padding:10px 24px;
+  text-align:center; display:none;
+  animation:flashAlert 0.5s infinite;
+}
+@keyframes flashAlert { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.threat-title { font-family:'Orbitron',monospace; color:var(--red); font-size:0.9em; letter-spacing:3px; }
+.threat-sub   { font-size:0.7em; color:#ff8899; margin-top:4px; }
+
+/* SIDE PANEL */
+#sidePanel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.side-section {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-title {
+  font-size: 0.6em; color: #1a4060;
+  letter-spacing: 3px; margin-bottom: 10px;
+}
+
+/* Contact card */
+.contact-card {
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  border-left: 3px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.contact-card:hover { background:rgba(0,207,255,0.05); }
+.contact-card.hostile { border-color: var(--red); }
+.contact-card.friendly { border-color: var(--green); }
+.contact-card.sam { border-color: var(--orange); }
+.contact-card.selected { background:rgba(0,207,255,0.1) !important; }
+
+.card-header { display:flex; justify-content:space-between; align-items:center; }
+.card-id { font-family:'Orbitron',monospace; font-size:0.8em; }
+.card-type { font-size:0.6em; letter-spacing:1px; padding:2px 6px; border-radius:2px; }
+.type-hostile  { background:rgba(255,51,85,0.15);  color:var(--red); }
+.type-friendly { background:rgba(0,255,136,0.15);  color:var(--green); }
+.type-sam      { background:rgba(255,140,0,0.15);  color:var(--orange); }
+
+.card-data { margin-top:6px; display:grid; grid-template-columns:1fr 1fr; gap:3px; }
+.data-item { font-size:0.65em; }
+.data-label { color:#1a4060; }
+.data-val   { font-family:'Orbitron',monospace; color:#d0eeff; }
+
+/* Intercept prediction */
+.intercept-box {
+  background: rgba(255,51,85,0.05);
+  border: 1px solid rgba(255,51,85,0.2);
+  border-radius:4px; padding:8px 10px;
+  margin-bottom:6px;
+}
+.intercept-title { font-size:0.65em; color:var(--red); letter-spacing:2px; margin-bottom:6px; }
+.intercept-row   { display:flex; justify-content:space-between; font-size:0.65em; padding:3px 0; border-bottom:1px solid #0a0a1a; }
+.intercept-row:last-child { border:none; }
+.intercept-val   { font-family:'Orbitron',monospace; color:var(--orange); }
+.intercept-val.critical { color:var(--red); animation: blink 0.8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Legend */
+.legend { display:flex; gap:12px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:0.65em; }
+.legend-dot  { width:8px; height:8px; border-radius:50%; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:#050f1a; }
+::-webkit-scrollbar-thumb { background:#0d2040; }
+
+@keyframes abortFlash { 0%,100%{background:#03050a} 50%{background:rgba(255,0,0,0.1)} }
+body.critical { animation:abortFlash 0.3s infinite; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="logo">AEGIS <span>RADAR</span></div>
+    <div class="pill pill-green">F-16C VIPER-1</div>
+    <div class="pill pill-blue" id="zoomPill">RANGE: 200NM</div>
+    <div class="pill pill-orange" id="threatCountPill">THREATS: 2</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <div class="pill pill-red" id="interceptPill">INTERCEPT: 4:22</div>
+    <div id="clock">--:--:-- UTC</div>
+  </div>
+</div>
+
+<!-- RADAR -->
+<div id="radarPanel">
+  <canvas id="radarCanvas"></canvas>
+
+  <!-- Zoom controls -->
+  <div id="zoomControls">
+    <button class="zoom-btn" onclick="zoomIn()">+</button>
+    <div id="zoomLevel">200<br>NM</div>
+    <button class="zoom-btn" onclick="zoomOut()">−</button>
+  </div>
+
+  <!-- HUD -->
+  <div class="hud-corner hud-tl">
+    <div>HDG <span class="hud-val" id="heading">247°</span></div>
+    <div style="margin-top:4px">ALT <span class="hud-val">28,400 FT</span></div>
+  </div>
+  <div class="hud-corner hud-tr">
+    <div>MACH <span class="hud-val">0.94</span></div>
+    <div style="margin-top:4px">IFF <span class="hud-val" style="color:var(--green)">ACTIVE</span></div>
+  </div>
+  <div class="hud-corner hud-bl">
+    <div>LAT <span class="hud-val">36.42°N</span></div>
+    <div style="margin-top:4px">LON <span class="hud-val">10.18°E</span></div>
+  </div>
+  <div class="hud-corner hud-br">
+    <div>SELECTED: <span class="hud-val" id="selectedContact">NONE</span></div>
+    <div style="margin-top:4px">BRG: <span class="hud-val" id="selectedBrg">---°</span> RNG: <span class="hud-val" id="selectedRng">---NM</span></div>
+  </div>
+
+  <!-- Threat flash -->
+  <div id="threatFlash">
+    <div class="threat-title">⚠ MISSILE UPLINK DETECTED</div>
+    <div class="threat-sub" id="threatFlashDetail">SA-11 GADFLY TRACKING VIPER-1</div>
+  </div>
+</div>
+
+<!-- SIDE PANEL -->
+<div id="sidePanel">
+
+  <!-- Legend -->
+  <div class="side-section">
+    <div class="sec-title">RADAR LEGEND</div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Friendly</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Hostile</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>SAM Site</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>Unknown</div>
+    </div>
+  </div>
+
+  <!-- Contacts -->
+  <div class="side-section">
+    <div class="sec-title">RADAR CONTACTS — <span id="contactCount" style="color:var(--green)">5 TRACKED</span></div>
+    <div id="contactList"></div>
+  </div>
+
+  <!-- Intercept predictions -->
+  <div class="side-section">
+    <div class="sec-title">⚡ INTERCEPT PREDICTIONS</div>
+    <div id="interceptList"></div>
+  </div>
+
+  <!-- Threat assessment -->
+  <div class="side-section">
+    <div class="sec-title">🧠 NEXUS-7 THREAT ASSESSMENT</div>
+    <div style="font-size:0.72em;color:#6090b0;line-height:1.6" id="nexusAssessment">
+      Analyzing contact trajectories...
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CLOCK ──
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toUTCString().slice(17,25) + ' UTC';
+}, 1000);
+
+// ── CANVAS SETUP ──
+const canvas = document.getElementById('radarCanvas');
+const ctx    = canvas.getContext('2d');
+let W, H, cx, cy;
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  W = canvas.width  = r.width;
+  H = canvas.height = r.height;
+  cx = W/2; cy = H/2;
+}
+resize(); window.addEventListener('resize', resize);
+
+// ── ZOOM ──
+let zoomRange = 200; // NM
+const zoomLevels = [50, 100, 200, 300, 500];
+let zoomIdx = 2;
+
+function zoomIn() {
+  if (zoomIdx > 0) zoomIdx--;
+  zoomRange = zoomLevels[zoomIdx];
+  updateZoomUI();
+}
+function zoomOut() {
+  if (zoomIdx < zoomLevels.length-1) zoomIdx++;
+  zoomRange = zoomLevels[zoomIdx];
+  updateZoomUI();
+}
+function updateZoomUI() {
+  document.getElementById('zoomLevel').innerHTML = zoomRange+'<br>NM';
+  document.getElementById('zoomPill').textContent = 'RANGE: '+zoomRange+'NM';
+}
+
+function nmToPixels(nm) {
+  return (nm / zoomRange) * Math.min(W,H) * 0.45;
+}
+
+// ── CONTACTS ──
+const contacts = [
+  {
+    id:'VIPER-1', type:'friendly', name:'F-16C VIPER',
+    x:0, y:0, vx:0.8, vy:-0.5,
+    speed:620, alt:28400, hdg:247,
+    selected: false
+  },
+  {
+    id:'VIPER-2', type:'friendly', name:'F-16C WINGMAN',
+    x:-80, y:30, vx:0.8, vy:-0.4,
+    speed:610, alt:27800, hdg:251,
+    selected: false
+  },
+  {
+    id:'AWACS', type:'friendly', name:'E-3 SENTRY',
+    x:-200, y:-120, vx:0.2, vy:0.1,
+    speed:350, alt:35000, hdg:180,
+    selected: false
+  },
+  {
+    id:'BANDIT-1', type:'hostile', name:'MiG-29 FULCRUM',
+    x:140, y:-90, vx:-1.2, vy:0.8,
+    speed:580, alt:25000, hdg:198,
+    selected: false
+  },
+  {
+    id:'BANDIT-2', type:'hostile', name:'Su-27 FLANKER',
+    x:100, y:120, vx:-0.8, vy:-1.0,
+    speed:620, alt:22000, hdg:215,
+    selected: false
+  },
+  {
+    id:'SAM-1', type:'sam', name:'SA-11 GADFLY',
+    x:180, y:80, vx:0, vy:0,
+    speed:0, alt:0, hdg:0,
+    selected: false
+  },
+  {
+    id:'SAM-2', type:'sam', name:'SA-6 GAINFUL',
+    x:220, y:-40, vx:0, vy:0,
+    speed:0, alt:0, hdg:0,
+    selected: false
+  },
+];
+
+const trails = {};
+let sweepAngle = 0;
+let selectedId = null;
+
+// ── CLICK TO SELECT ──
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const my = (e.clientY - rect.top)  * (canvas.height / rect.height);
+
+  let found = null;
+  contacts.forEach(c => {
+    const px = cx + nmToPixels(c.x);
+    const py = cy + nmToPixels(c.y);
+    const dist = Math.sqrt((mx-px)**2 + (my-py)**2);
+    if (dist < 15) found = c.id;
+  });
+
+  selectedId = found;
+  contacts.forEach(c => c.selected = c.id === selectedId);
+
+  if (found) {
+    const c = contacts.find(x => x.id === found);
+    document.getElementById('selectedContact').textContent = found;
+    const brg = Math.floor(Math.atan2(c.x, -c.y) * 180/Math.PI + 360) % 360;
+    const rng = Math.floor(Math.sqrt(c.x**2 + c.y**2));
+    document.getElementById('selectedBrg').textContent = String(brg).padStart(3,'0') + '°';
+    document.getElementById('selectedRng').textContent = rng + 'NM';
+  } else {
+    document.getElementById('selectedContact').textContent = 'NONE';
+    document.getElementById('selectedBrg').textContent = '---°';
+    document.getElementById('selectedRng').textContent = '---NM';
+  }
+});
+
+// ── DRAW RADAR ──
+function drawRadar() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#020810';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,30,60,0.4)'; ctx.lineWidth = 1;
+  for (let x=0; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=0; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Range rings
+  const rings = [0.25, 0.5, 0.75, 1.0];
+  rings.forEach((f, i) => {
+    const r = nmToPixels(zoomRange * f);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(0,80,140,0.2)'; ctx.lineWidth = 1; ctx.stroke();
+    // Range label
+    const nm = Math.floor(zoomRange * f);
+    ctx.fillStyle = 'rgba(0,80,140,0.5)';
+    ctx.font = '10px Share Tech Mono';
+    ctx.fillText(nm+'NM', cx+r+4, cy-4);
+  });
+
+  // Cardinal lines
+  ctx.strokeStyle = 'rgba(0,80,140,0.15)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke();
+
+  // Compass labels
+  ctx.fillStyle = 'rgba(0,150,200,0.4)'; ctx.font = '11px Share Tech Mono';
+  ctx.fillText('N', cx-4, 16);
+  ctx.fillText('S', cx-4, H-6);
+  ctx.fillText('W', 6, cy+4);
+  ctx.fillText('E', W-14, cy+4);
+
+  // Sweep
+  for (let i = 0; i < 80; i++) {
+    const a = sweepAngle - (i * Math.PI/180);
+    const alpha = (80-i)/80 * 0.3;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx, cy, Math.min(W,H)*0.8, a, a+Math.PI/90);
+    ctx.fillStyle = `rgba(0,255,136,${alpha})`; ctx.fill();
+  }
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(sweepAngle)*Math.min(W,H)*0.8, cy+Math.sin(sweepAngle)*Math.min(W,H)*0.8);
+  ctx.strokeStyle = 'rgba(0,255,136,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Draw intercept lines for hostile contacts
+  contacts.filter(c => c.type==='hostile').forEach(c => {
+    const px = cx + nmToPixels(c.x);
+    const py = cy + nmToPixels(c.y);
+    const predX = cx + nmToPixels(c.x + c.vx*30);
+    const predY = cy + nmToPixels(c.y + c.vy*30);
+
+    // Prediction line
+    ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(predX,predY);
+    ctx.strokeStyle = 'rgba(255,51,85,0.3)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+
+    // Intercept point marker
+    ctx.beginPath(); ctx.arc(predX, predY, 4, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,51,85,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+  });
+
+  // SAM engagement rings
+  contacts.filter(c => c.type==='sam').forEach(c => {
+    const px = cx + nmToPixels(c.x);
+    const py = cy + nmToPixels(c.y);
+    const engageR = nmToPixels(25); // 25NM engagement radius
+
+    ctx.beginPath(); ctx.arc(px, py, engageR, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,140,0,0.15)'; ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+
+    ctx.beginPath(); ctx.arc(px, py, engageR, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,140,0,0.03)'; ctx.fill();
+  });
+
+  // Draw line from VIPER-1 to selected contact
+  if (selectedId && selectedId !== 'VIPER-1') {
+    const target = contacts.find(c => c.id === selectedId);
+    if (target) {
+      const tx = cx + nmToPixels(target.x);
+      const ty = cy + nmToPixels(target.y);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty);
+      ctx.strokeStyle = 'rgba(0,207,255,0.4)'; ctx.lineWidth = 1;
+      ctx.setLineDash([6,3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  // Draw contacts
+  contacts.forEach(c => {
+    // Move contacts
+    if (c.type !== 'sam') {
+      c.x += c.vx * 0.03;
+      c.y += c.vy * 0.03;
+    }
+
+    const px = cx + nmToPixels(c.x);
+    const py = cy + nmToPixels(c.y);
+
+    // Trail
+    if (!trails[c.id]) trails[c.id] = [];
+    if (Math.floor(sweepAngle * 5) % 3 === 0) trails[c.id].push({x:px, y:py});
+    if (trails[c.id].length > 10) trails[c.id].shift();
+
+    const colorMap = { hostile:'255,51,85', friendly:'0,255,136', sam:'255,140,0' };
+    const col = colorMap[c.type];
+
+    trails[c.id].forEach((pt, i) => {
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, 2, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${col},${(i/trails[c.id].length)*0.5})`;
+      ctx.fill();
+    });
+
+    // Selection ring
+    if (c.selected) {
+      ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,207,255,0.7)'; ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 24, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,207,255,0.2)'; ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Contact shape
+    ctx.fillStyle = `rgb(${col})`;
+    if (c.type === 'hostile') {
+      ctx.beginPath();
+      ctx.moveTo(px, py-7); ctx.lineTo(px+7, py+7); ctx.lineTo(px-7, py+7);
+      ctx.closePath(); ctx.fill();
+    } else if (c.type === 'sam') {
+      ctx.fillRect(px-5, py-5, 10, 10);
+      // X mark
+      ctx.strokeStyle = `rgb(${col})`; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(px-4,py-4); ctx.lineTo(px+4,py+4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px+4,py-4); ctx.lineTo(px-4,py+4); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(px, py, c.id==='VIPER-1'?7:5, 0, Math.PI*2);
+      ctx.fill();
+      // Heading tick
+      if (c.hdg) {
+        const rad = (c.hdg - 90) * Math.PI/180;
+        ctx.beginPath(); ctx.moveTo(px, py);
+        ctx.lineTo(px+Math.cos(rad)*15, py+Math.sin(rad)*15);
+        ctx.strokeStyle = `rgba(${col},0.6)`; ctx.lineWidth=1.5; ctx.stroke();
+      }
+    }
+
+    // Label
+    ctx.fillStyle = `rgb(${col})`;
+    ctx.font = 'bold 11px Share Tech Mono';
+    ctx.fillText(c.id, px+10, py-4);
+
+    // Distance from VIPER-1
+    if (c.id !== 'VIPER-1') {
+      const dist = Math.floor(Math.sqrt(c.x**2 + c.y**2));
+      ctx.fillStyle = `rgba(${col},0.6)`;
+      ctx.font = '9px Share Tech Mono';
+      ctx.fillText(dist+'NM', px+10, py+7);
+    }
+
+    // Speed for hostiles
+    if (c.type === 'hostile') {
+      ctx.fillStyle = 'rgba(255,51,85,0.5)';
+      ctx.font = '9px Share Tech Mono';
+      ctx.fillText(c.speed+'KT', px+10, py+18);
+    }
+  });
+
+  sweepAngle += 0.025;
+  requestAnimationFrame(drawRadar);
+}
+drawRadar();
+
+// ── UPDATE SIDE PANEL ──
+function updateSidePanel() {
+  // Contact list
+  const list = document.getElementById('contactList');
+  list.innerHTML = '';
+
+  contacts.forEach(c => {
+    const dist = c.id==='VIPER-1' ? 0 : Math.floor(Math.sqrt(c.x**2 + c.y**2));
+    const brg  = c.id==='VIPER-1' ? 0 : Math.floor((Math.atan2(c.x, -c.y) * 180/Math.PI + 360) % 360);
+    const typeMap = { friendly:'type-friendly', hostile:'type-hostile', sam:'type-sam' };
+    const typeLabel = { friendly:'FRIENDLY', hostile:'HOSTILE', sam:'SAM SITE' };
+
+    list.innerHTML += `
+      <div class="contact-card ${c.type} ${c.selected?'selected':''}" onclick="selectContact('${c.id}')">
+        <div class="card-header">
+          <span class="card-id" style="color:${c.type==='hostile'?'var(--red)':c.type==='sam'?'var(--orange)':'var(--green)'}">${c.id}</span>
+          <span class="card-type ${typeMap[c.type]}">${typeLabel[c.type]}</span>
+        </div>
+        <div style="font-size:0.6em;color:#2a5070;margin-top:2px">${c.name}</div>
+        <div class="card-data">
+          <div class="data-item"><div class="data-label">BRG</div><div class="data-val">${String(brg).padStart(3,'0')}°</div></div>
+          <div class="data-item"><div class="data-label">RNG</div><div class="data-val">${dist}NM</div></div>
+          <div class="data-item"><div class="data-label">SPD</div><div class="data-val">${c.speed}KT</div></div>
+          <div class="data-item"><div class="data-label">ALT</div><div class="data-val">${c.alt?c.alt.toLocaleString():'-'}FT</div></div>
+        </div>
+      </div>`;
+  });
+
+  // Intercept predictions
+  const interceptList = document.getElementById('interceptList');
+  interceptList.innerHTML = '';
+
+  const hostiles = contacts.filter(c => c.type === 'hostile');
+  let minIntercept = Infinity;
+
+  hostiles.forEach(c => {
+    const dist = Math.sqrt(c.x**2 + c.y**2);
+    // Simple intercept time: distance / closing speed
+    const closingSpeed = Math.sqrt(c.vx**2 + c.vy**2) * 30; // NM/min approx
+    const timeMin = closingSpeed > 0 ? Math.max(0, (dist - 10) / closingSpeed) : 99;
+    if (timeMin < minIntercept) minIntercept = timeMin;
+
+    const mins = Math.floor(timeMin);
+    const secs = Math.floor((timeMin - mins) * 60);
+    const critical = timeMin < 3;
+
+    interceptList.innerHTML += `
+      <div class="intercept-box">
+        <div class="intercept-title">⚡ ${c.id} — ${c.name}</div>
+        <div class="intercept-row"><span>Time to intercept</span><span class="intercept-val ${critical?'critical':''}">${mins}:${String(secs).padStart(2,'0')}</span></div>
+        <div class="intercept-row"><span>Current range</span><span class="intercept-val">${Math.floor(dist)}NM</span></div>
+        <div class="intercept-row"><span>Closing speed</span><span class="intercept-val">${Math.floor(closingSpeed*60)}KT</span></div>
+        <div class="intercept-row"><span>Threat level</span><span class="intercept-val" style="color:${critical?'var(--red)':'var(--orange)'}">${critical?'CRITICAL':'MODERATE'}</span></div>
+      </div>`;
+  });
+
+  // Update header intercept pill
+  const totalMins = Math.floor(minIntercept);
+  const totalSecs = Math.floor((minIntercept - totalMins) * 60);
+  document.getElementById('interceptPill').textContent = `INTERCEPT: ${totalMins}:${String(totalSecs).padStart(2,'0')}`;
+  document.getElementById('interceptPill').style.background = minIntercept<3?'rgba(255,51,85,0.3)':'rgba(255,51,85,0.1)';
+
+  // Threat count
+  document.getElementById('threatCountPill').textContent = `THREATS: ${hostiles.length + contacts.filter(c=>c.type==='sam').length}`;
+
+  // NEXUS assessment
+  const assessments = [
+    `BANDIT-1 on intercept heading. Recommend immediate LEFT BREAK. Engage with AIM-120 at 15NM.`,
+    `SAM-1 engagement envelope — current track takes VIPER-1 through threat ring. Recommend NORTH deviation.`,
+    `BANDIT-2 closing from SOUTH. VIPER-2 has intercept solution. Coordinate bracket maneuver.`,
+    `Two hostile contacts converging. Classic pincer formation. Recommend CLIMB to FL350 and AFTERBURNER egress WEST.`,
+  ];
+  document.getElementById('nexusAssessment').textContent = assessments[Math.floor(Date.now()/5000) % assessments.length];
+}
+
+function selectContact(id) {
+  selectedId = id;
+  contacts.forEach(c => c.selected = c.id === id);
+  const c = contacts.find(x => x.id === id);
+  document.getElementById('selectedContact').textContent = id;
+  const brg = Math.floor((Math.atan2(c.x, -c.y) * 180/Math.PI + 360) % 360);
+  const rng = Math.floor(Math.sqrt(c.x**2 + c.y**2));
+  document.getElementById('selectedBrg').textContent = String(brg).padStart(3,'0') + '°';
+  document.getElementById('selectedRng').textContent = rng + 'NM';
+}
+
+// Threat flash
+setInterval(() => {
+  if (Math.random() > 0.7) {
+    document.getElementById('threatFlash').style.display = 'block';
+    const t = ['SA-11 GADFLY TRACKING VIPER-1','MiG-29 RADAR LOCK DETECTED','MISSILE LAUNCH — BRG 042'];
+    document.getElementById('threatFlashDetail').textContent = t[Math.floor(Math.random()*t.length)];
+    setTimeout(() => document.getElementById('threatFlash').style.display='none', 3000);
+  }
+}, 8000);
+
+setInterval(updateSidePanel, 1500);
+updateSidePanel();
+</script>
+</body>
+</html>
