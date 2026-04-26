@@ -47,7 +47,7 @@ AEGIS-MCS-F16/
 └── aegis_radar_ultimate.html   # Tactical radar
 
 ## Author
-Yosr Derbali — Tunisia 🇹🇳
+**Yosr Derbali** — 2nd year IoT Student, ISIMM Monastir
 
 ## License
 MIT License
